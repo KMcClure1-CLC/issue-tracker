@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Living Centres - Issue Tracker</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        #whiteboard-area {
+            flex-grow: 1;
+            height: 100vh;
+            overflow-y: auto; /* Allow scrolling through whiteboards */
+            padding: 20px;
+            display: flex; /* Arrange whiteboards */
+            flex-wrap: wrap; /* Allow wrapping */
+            gap: 20px; /* Spacing between whiteboards */
+            align-content: flex-start; /* Start placing items from top */
+        }
+
+        .building-whiteboard {
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            padding: 15px;
+            width: 300px; /* Adjust as needed */
+            min-height: 200px; /* Ensure minimum size */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .building-whiteboard h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            font-size: 1.2em;
+            color: #333;
+        }
+
+        .issue-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-left-width: 5px; /* Thick border for status color */
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: box-shadow 0.2s ease-in-out;
+        }
+        .issue-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Status colors for card border */
+        .issue-card.status-New { border-left-color: #dc3545; } /* Red */
+        .issue-card.status-InProgress { border-left-color: #ffc107; } /* Yellow */
+        .issue-card.status-Resolved { border-left-color: #28a745; } /* Green */
+        .issue-card.status-Paused { border-left-color: #6c757d; } /* Grey */
+        .issue-card.status-Unknown { border-left-color: #adb5bd; } /* Light Grey */
+
+
+        .issue-card-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #0056b3; /* Make title stand out */
+        }
+        .issue-card-details {
+            font-size: 0.9em;
+            color: #555;
+        }
+        .issue-card-updated {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        #ui-panel {
+            width: 400px; /* Slightly wider panel */
+            min-width: 350px; /* Prevent squishing too much */
+            height: 100vh;
+            background-color: #ffffff;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-y: auto; /* Scroll panel content */
+            display: flex;
+            flex-direction: column;
+        }
+
+        #ui-panel h1, #ui-panel h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        #issue-details, #issue-form, #add-development-section {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        #issue-details h3, #issue-form h3, #add-development-section h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+
+         #issue-details p, #issue-form label, #add-development-section label {
+            margin: 5px 0;
+            display: block;
+        }
+         #issue-details strong {
+             display: inline-block;
+             min-width: 90px; /* Adjusted width */
+         }
+
+        #issue-form input[type="text"],
+        #issue-form select,
+        #issue-form textarea,
+        #add-development-section textarea {
+            width: calc(100% - 12px); /* Account for padding */
+            padding: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box; /* Include padding in width calculation */
+        }
+
+        #issue-form textarea,
+        #add-development-section textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+         #issue-form button, #add-development-section button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-right: 5px;
+            transition: background-color 0.2s; /* Added for hover effect */
+        }
+         #issue-form button:hover, #add-development-section button:hover {
+            background-color: #0056b3;
+        }
+         #issue-form button.cancel {
+             background-color: #6c757d;
+         }
+          #issue-form button.cancel:hover {
+             background-color: #5a6268;
+         }
+         /* Style for disabled buttons */
+         #issue-form button:disabled, #add-development-section button:disabled,
+         #add-new-issue-btn:disabled {
+             background-color: #cccccc;
+             cursor: not-allowed;
+         }
+
+
+        #add-new-issue-btn {
+             display: block;
+             width: 100%;
+             padding: 10px;
+             background-color: #28a745;
+             color: white;
+             border: none;
+             border-radius: 3px;
+             cursor: pointer;
+             text-align: center;
+             margin-bottom: 20px;
+             font-size: 1em;
+             transition: background-color 0.2s; /* Added for hover effect */
+             box-sizing: border-box; /* Include padding in width calculation */
+        }
+         #add-new-issue-btn:hover:not(:disabled) { /* Add :not(:disabled) */
+             background-color: #218838;
+         }
+
+        /* Status colors for text in details panel */
+        .status-New { color: #dc3545; font-weight: bold; } /* Red */
+        .status-InProgress { color: #ffc107; font-weight: bold; } /* Yellow */
+        .status-Resolved { color: #28a745; font-weight: bold; } /* Green */
+        .status-Paused { color: #6c757d; font-weight: bold; } /* Grey */
+        .status-Unknown { color: #adb5bd; font-weight: bold; } /* Light Grey */
+
+        #development-log-container {
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        #development-log {
+            max-height: 200px; /* Limit height */
+            overflow-y: auto;
+            margin-top: 5px;
+            padding-right: 5px; /* Space for scrollbar */
+        }
+         .development-entry {
+             background-color: #fff;
+             border: 1px solid #eee;
+             border-radius: 3px;
+             padding: 8px;
+             margin-bottom: 8px;
+             font-size: 0.9em;
+         }
+         .development-entry .meta {
+             font-size: 0.8em;
+             color: #666;
+             margin-bottom: 3px;
+             word-wrap: break-word; /* Wrap long meta info */
+         }
+          .development-entry .note {
+             white-space: pre-wrap; /* Preserve formatting */
+             color: #333;
+             word-wrap: break-word; /* Wrap long notes */
+         }
+
+
+         /* Hide forms and dynamic sections initially */
+         #issue-form { display: none; }
+         #add-development-section { display: none; } /* Initially hidden */
+         #details-content { display: none; }
+         #edit-issue-btn { display: inline-block; margin-top: 10px; background-color: #ffc107; color: #333; } /* Keep edit button always visible when details shown */
+         #edit-issue-btn:hover { background-color: #e0a800; }
+
+
+         /* Loading Indicator Style */
+         #loading-indicator {
+             text-align: center;
+             padding: 30px;
+             font-size: 1.2em;
+             color: #555;
+             width: 100%; /* Ensure it takes full width */
+         }
+
+         /* Simple Error Message Style */
+         .error-message {
+             color: red;
+             font-weight: bold;
+             padding: 10px;
+             border: 1px solid red;
+             background-color: #fdd;
+             border-radius: 4px;
+             margin-bottom: 15px;
+             text-align: center;
+         }
+
+
+    </style>
+</head>
+<body>
+
+    <div id="whiteboard-area">
+        <!-- Building whiteboards will be generated here by JS -->
+        <!-- Loading indicator will be placed here -->
+    </div>
+
+    <div id="ui-panel">
+        <h1>Issue Tracker</h1>
+        <p style="margin-bottom: 20px;">Campus Living Centres - Physical Resources</p>
+
+        <div id="error-display-area"></div> <!-- Area to display persistent errors -->
+
+        <button id="add-new-issue-btn">Add New Issue</button>
+
+        <div id="issue-details">
+            <h3>Issue Details</h3>
+            <p id="details-prompt">Select an issue card from a whiteboard to view details.</p>
+            <div id="details-content">
+                <p><strong>ID:</strong> <span id="detail-id"></span></p> <!-- Added ID display -->
+                <p><strong>Title:</strong> <span id="detail-title"></span></p>
+                <p><strong>Building:</strong> <span id="detail-building"></span></p>
+                <p><strong>Location:</strong> <span id="detail-location"></span></p>
+                <p><strong>Status:</strong> <span id="detail-status"></span></p>
+                <p><strong>Priority:</strong> <span id="detail-priority"></span></p>
+                <p><strong>Description:</strong></p>
+                <p id="detail-description" style="white-space: pre-wrap; background:#eee; padding: 5px; border-radius: 3px; margin-top: 0;"></p>
+                <p><strong>Assigned To:</strong> <span id="detail-assigned"></span></p>
+                <p><strong>Created:</strong> <span id="detail-created"></span></p>
+                <p><strong>Last Updated:</strong> <span id="detail-updated"></span></p>
+                <button id="edit-issue-btn">Edit Core Details</button>
+
+                <div id="development-log-container">
+                    <h3>Development Log</h3>
+                    <div id="development-log">
+                        <!-- Development entries will be added here -->
+                    </div>
+                </div>
+
+                 <div id="add-development-section">
+                    <h3>Add Update / Development</h3>
+                    <input type="hidden" id="development-issue-id">
+                    <label for="development-note">Update Note:</label>
+                    <textarea id="development-note" required></textarea>
+                    <label for="development-responsible">Next Step / Waiting On (Assignee):</label>
+                    <input type="text" id="development-responsible">
+                    <button id="save-development-btn">Add Update</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="issue-form">
+            <h3 id="form-title">Add New Issue</h3>
+            <input type="hidden" id="issue-id">
+            <label for="issue-building">Building:</label>
+            <select id="issue-building">
+                <!-- Options will be populated by JS -->
+            </select>
+
+            <label for="issue-title">Title:</label>
+            <input type="text" id="issue-title" required>
+
+            <label for="issue-location">Specific Location:</label>
+            <input type="text" id="issue-location">
+
+            <!-- Changed label: Description here is the *core* description -->
+            <label for="issue-description">Core Description:</label>
+            <textarea id="issue-description" required></textarea>
+
+             <!-- Added field for the first note when creating -->
+             <label for="issue-initial-note">First Development Note (Optional):</label>
+             <textarea id="issue-initial-note"></textarea>
+
+            <label for="issue-status">Status:</label>
+            <select id="issue-status">
+                <option value="New">New</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Paused">Paused</option>
+                <!-- Add more statuses as needed -->
+            </select>
+
+            <label for="issue-priority">Priority:</label>
+            <select id="issue-priority">
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+            </select>
+
+            <label for="issue-assigned">Assigned To / Responsible:</label>
+            <input type="text" id="issue-assigned">
+
+            <button id="save-issue-btn">Save Issue</button>
+            <button type="button" id="cancel-form-btn" class="cancel">Cancel</button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Data ---
+        // IMPORTANT: This URL should be the /exec URL from your *latest* deployment
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxRLUzGFUcIW1jahICRyP90cY7OAE05hi-4NTO2coYuHjE2sC5sh35GyiJ3ZrtEU0zAw/exec"; // <-- YOUR NEW URL IS HERE
+
+        let buildings = []; // Initialize empty - will be fetched from Sheet
+        let issues = [];    // Initialize empty - will be fetched from Sheet
+
+        // --- UI Element References ---
+        const whiteboardArea = document.getElementById('whiteboard-area');
+        const issueDetailsDiv = document.getElementById('issue-details');
+        const detailsPrompt = document.getElementById('details-prompt');
+        const detailsContentDiv = document.getElementById('details-content');
+        const issueFormDiv = document.getElementById('issue-form');
+        const addNewIssueBtn = document.getElementById('add-new-issue-btn');
+        const editIssueBtn = document.getElementById('edit-issue-btn');
+        const saveIssueBtn = document.getElementById('save-issue-btn');
+        const cancelFormBtn = document.getElementById('cancel-form-btn');
+        const formTitle = document.getElementById('form-title');
+        const errorDisplayArea = document.getElementById('error-display-area'); // Error message div
+
+
+        // Detail fields
+        const detailId = document.getElementById('detail-id'); // Added ID field
+        const detailTitle = document.getElementById('detail-title');
+        const detailBuilding = document.getElementById('detail-building');
+        const detailLocation = document.getElementById('detail-location');
+        const detailStatus = document.getElementById('detail-status');
+        const detailPriority = document.getElementById('detail-priority');
+        const detailDescription = document.getElementById('detail-description');
+        const detailAssigned = document.getElementById('detail-assigned');
+        const detailCreated = document.getElementById('detail-created');
+        const detailUpdated = document.getElementById('detail-updated');
+        const developmentLog = document.getElementById('development-log');
+
+        // Form fields
+        const formIssueId = document.getElementById('issue-id');
+        const formBuildingSelect = document.getElementById('issue-building');
+        const formTitleInput = document.getElementById('issue-title');
+        const formLocationInput = document.getElementById('issue-location');
+        const formDescriptionInput = document.getElementById('issue-description'); // Core description
+        const formInitialNoteInput = document.getElementById('issue-initial-note'); // First dev note input
+        const formStatusSelect = document.getElementById('issue-status');
+        const formPrioritySelect = document.getElementById('issue-priority');
+        const formAssignedInput = document.getElementById('issue-assigned');
+
+        // Development fields
+        const addDevelopmentSection = document.getElementById('add-development-section');
+        const developmentIssueIdInput = document.getElementById('development-issue-id');
+        const developmentNoteInput = document.getElementById('development-note');
+        const developmentResponsibleInput = document.getElementById('development-responsible');
+        const saveDevelopmentBtn = document.getElementById('save-development-btn');
+
+        // Loading Indicator Element
+        const loadingIndicator = document.createElement('p');
+        loadingIndicator.id = 'loading-indicator';
+        loadingIndicator.textContent = 'Loading data...';
+        // Style is applied via CSS above
+
+        // --- Error Display ---
+         function displayError(message) {
+             console.error("Displaying Error:", message); // Log error to console too
+             errorDisplayArea.innerHTML = `<div class="error-message">${message}</div>`;
+         }
+
+         function clearError() {
+             errorDisplayArea.innerHTML = '';
+         }
+
+
+        // --- Loading State ---
+        function showLoading(isLoading, message = 'Loading data...') {
+            clearError(); // Clear errors when loading starts/stops
+            const whiteboardArea = document.getElementById('whiteboard-area');
+            const existingIndicator = document.getElementById('loading-indicator');
+            const buttonsToDisable = [addNewIssueBtn, editIssueBtn, saveIssueBtn, saveDevelopmentBtn, cancelFormBtn];
+
+            loadingIndicator.textContent = message; // Update loading message
+
+            if (isLoading) {
+                clearIssueDetails(); // Clear details when loading starts
+                whiteboardArea.innerHTML = ''; // Clear boards
+                if (!existingIndicator) {
+                    whiteboardArea.appendChild(loadingIndicator);
+                }
+                // Disable buttons
+                 buttonsToDisable.forEach(btn => { if(btn) btn.disabled = true; });
+                 // Also disable clicking on existing issue cards? Maybe add overlay? For now, just buttons.
+
+            } else {
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+                 // Re-enable buttons
+                 buttonsToDisable.forEach(btn => { if(btn) btn.disabled = false; });
+            }
+        }
+
+
+        // --- Core Functions ---
+
+        function renderWhiteboardsAndIssues() {
+            whiteboardArea.innerHTML = ''; // Clear previous content (including loading indicator if present)
+
+            if (buildings.length === 0) {
+                displayError('No building data loaded. Check Google Sheet setup and Apps Script permissions/deployment.');
+                whiteboardArea.innerHTML = '<p id="loading-indicator">No building data found.</p>'; // Keep a message here
+                return; // Stop execution if no buildings
+            }
+             if (issues.length === 0) {
+                  // If buildings exist but no issues, it's not an error, just display message per building
+                  console.log("No issues found, but buildings are loaded.");
+             }
+
+
+            buildings.forEach(building => {
+                // Create whiteboard container
+                const boardDiv = document.createElement('div');
+                boardDiv.className = 'building-whiteboard';
+                boardDiv.id = `whiteboard-${building.id}`; // Assign ID for easy targeting
+
+                const title = document.createElement('h2');
+                title.textContent = building.name || `Building ID: ${building.id}`; // Fallback if name missing
+                boardDiv.appendChild(title);
+
+                // Find and add issues for this building
+                const buildingIssues = issues.filter(issue => issue.buildingid === building.id); // Match backend key 'buildingid'
+                if (buildingIssues.length === 0) {
+                    const noIssuesMsg = document.createElement('p');
+                    noIssuesMsg.textContent = 'No open issues.';
+                    noIssuesMsg.style.fontStyle = 'italic';
+                    noIssuesMsg.style.color = '#666';
+                    boardDiv.appendChild(noIssuesMsg);
+                } else {
+                     // Sort issues - Resolved last, then by priority (High > Medium > Low), then by Date Updated Desc
+                     buildingIssues.sort((a, b) => {
+                         const statusOrder = { 'New': 1, 'In Progress': 2, 'Paused': 3, 'Resolved': 4 };
+                         const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+
+                         const statusA = statusOrder[a.status] || 99;
+                         const statusB = statusOrder[b.status] || 99;
+                         const prioA = priorityOrder[a.priority] || 99;
+                         const prioB = priorityOrder[b.priority] || 99;
+
+                         if (statusA !== statusB) {
+                             return statusA - statusB; // Sort by status first
+                         }
+                         if (prioA !== prioB) {
+                             return prioA - prioB; // Then by priority
+                         }
+                         // If status and priority are same, sort by most recently updated
+                         return new Date(b.dateupdated) - new Date(a.dateupdated); // Match backend key 'dateupdated'
+                     });
+
+                    buildingIssues.forEach(issue => {
+                        // Basic check for valid issue structure
+                         if (issue && typeof issue === 'object' && issue.id !== undefined) {
+                            const cardDiv = createIssueCard(issue);
+                            boardDiv.appendChild(cardDiv);
+                         } else {
+                              console.warn("Skipping invalid issue object:", issue);
+                         }
+                    });
+                }
+
+                whiteboardArea.appendChild(boardDiv);
+            });
+        }
+
+        function createIssueCard(issue) {
+            const cardDiv = document.createElement('div');
+            // Ensure status has a valid class name (replace space, handle null/undefined)
+            const status = issue.status || 'Unknown';
+            const statusClass = status.replace(/\s+/g, '') || 'Unknown';
+            cardDiv.className = `issue-card status-${statusClass}`;
+            cardDiv.dataset.issueId = issue.id; // Store issue ID for click handling
+
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'issue-card-title';
+            titleDiv.textContent = issue.title || 'No Title';
+            cardDiv.appendChild(titleDiv);
+
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'issue-card-details';
+            detailsDiv.textContent = `Loc: ${issue.location || 'N/A'} | Prio: ${issue.priority || 'N/A'}`;
+            cardDiv.appendChild(detailsDiv);
+
+            const updatedDiv = document.createElement('div');
+            updatedDiv.className = 'issue-card-updated';
+             // Use dateupdated field from backend
+            updatedDiv.textContent = `Updated: ${issue.dateupdated || 'N/A'}`;
+            cardDiv.appendChild(updatedDiv);
+
+            // Add click listener to show details
+            cardDiv.addEventListener('click', () => {
+                displayIssueDetails(issue.id);
+            });
+
+            return cardDiv;
+        }
+
+
+        function populateBuildingDropdown() {
+            formBuildingSelect.innerHTML = ''; // Clear existing
+            if (buildings.length === 0) {
+                 const option = document.createElement('option');
+                 option.value = "";
+                 option.textContent = "No buildings loaded";
+                 option.disabled = true;
+                 formBuildingSelect.appendChild(option);
+                 // Disable the Add New Issue button if no buildings?
+                 // addNewIssueBtn.disabled = true; // Consider this
+                 return;
+            }
+             // addNewIssueBtn.disabled = false; // Re-enable if previously disabled
+
+             // Add a default prompt option
+             const promptOption = document.createElement('option');
+             promptOption.value = "";
+             promptOption.textContent = "-- Select a Building --";
+             promptOption.disabled = true;
+             promptOption.selected = true; // Make it the default selection
+             formBuildingSelect.appendChild(promptOption);
+
+
+            buildings.forEach(b => {
+                 if(b && b.id && b.name) { // Ensure building object is valid
+                    const option = document.createElement('option');
+                    option.value = b.id; // Use buildingId from sheet
+                    option.textContent = b.name; // Use Name from sheet
+                    formBuildingSelect.appendChild(option);
+                 }
+            });
+        }
+
+        function displayIssueDetails(issueId) {
+            const issue = issues.find(i => i.id === issueId);
+            if (!issue) {
+                 displayError(`Could not find details for Issue ID ${issueId}. Data might be out of sync.`);
+                 clearIssueDetails();
+                 return;
+            }
+
+            const building = buildings.find(b => b.id === issue.buildingid); // Match backend key 'buildingid'
+
+            detailId.textContent = issue.id; // Display the ID
+            detailTitle.textContent = issue.title || 'N/A';
+            detailBuilding.textContent = building ? building.name : `Unknown Building (ID: ${issue.buildingid})`;
+            detailLocation.textContent = issue.location || 'N/A';
+
+            // Ensure status has a valid class name (replace space)
+            const status = issue.status || 'Unknown';
+            const statusClass = status.replace(/\s+/g, '') || 'Unknown';
+            detailStatus.innerHTML = `<span class="status-${statusClass}">${status}</span>`; // Apply class
+
+            detailPriority.textContent = issue.priority || 'N/A';
+            detailDescription.textContent = issue.description || 'N/A'; // Show core description
+            detailAssigned.textContent = issue.assignedto || 'Unassigned'; // Match backend key 'assignedto'
+            detailCreated.textContent = issue.datecreated || 'N/A'; // Match backend key 'datecreated'
+            detailUpdated.textContent = issue.dateupdated || 'N/A'; // Match backend key 'dateupdated'
+
+             // Display development log
+            developmentLog.innerHTML = ''; // Clear previous
+            // Ensure developments is an array before trying to access/sort
+            const developmentsToShow = Array.isArray(issue.developments) ? issue.developments : [];
+
+            if (developmentsToShow.length > 0) {
+                // Data should already be sorted by GAS, but sorting again doesn't hurt
+                 developmentsToShow.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                developmentsToShow.forEach(dev => {
+                     const entryDiv = document.createElement('div');
+                     entryDiv.className = 'development-entry';
+
+                     const metaDiv = document.createElement('div');
+                     metaDiv.className = 'meta';
+                     // Format timestamp nicely if it's a valid date string
+                     let displayTimestamp = 'Invalid Date';
+                     if (dev.timestamp) {
+                         try {
+                             displayTimestamp = new Date(dev.timestamp).toLocaleString();
+                         } catch (e) { /* Keep 'Invalid Date' */ }
+                     }
+                     metaDiv.textContent = `[${displayTimestamp}] ${dev.responsible ? 'Next Step/Waiting on: ' + dev.responsible : ''}`;
+
+                     const noteDiv = document.createElement('div');
+                     noteDiv.className = 'note';
+                     noteDiv.textContent = dev.note || ''; // Handle potentially missing note
+
+                     entryDiv.appendChild(metaDiv);
+                     entryDiv.appendChild(noteDiv);
+                     developmentLog.appendChild(entryDiv);
+                 });
+            } else {
+                developmentLog.innerHTML = '<p>No development notes added yet.</p>';
+            }
+
+            detailsPrompt.style.display = 'none'; // Hide initial message
+            detailsContentDiv.style.display = 'block'; // Show the details block
+            addDevelopmentSection.style.display = 'block'; // Show the add development form
+            developmentIssueIdInput.value = issue.id; // Set the hidden ID for adding developments
+            developmentNoteInput.value = ''; // Clear note area
+            // Pre-fill responsible with current assignee for convenience
+            developmentResponsibleInput.value = issue.assignedto || '';
+
+            hideIssueForm(); // Hide main add/edit form if it was open
+            clearError(); // Clear any previous errors
+        }
+
+        function clearIssueDetails() {
+             detailsPrompt.style.display = 'block';
+             detailsContentDiv.style.display = 'none';
+             addDevelopmentSection.style.display = 'none';
+             developmentIssueIdInput.value = ''; // Clear hidden ID
+             hideIssueForm(); // Ensure add/edit form is also hidden
+             // Don't clear errors here, keep them until next action
+        }
+
+
+        function showIssueForm(issueId = null) {
+            clearIssueDetails(); // Hide details view
+            clearError(); // Clear errors when showing form
+            issueFormDiv.style.display = 'block';
+            addNewIssueBtn.disabled = true; // Disable Add button while form is open
+            populateBuildingDropdown(); // Ensure buildings are listed
+
+             // Hide/show initial note field based on add/edit
+             const initialNoteLabel = document.querySelector('label[for="issue-initial-note"]');
+             const initialNoteTextarea = document.getElementById('issue-initial-note');
+             if (initialNoteLabel) initialNoteLabel.style.display = (issueId === null) ? 'block' : 'none';
+             if (initialNoteTextarea) initialNoteTextarea.style.display = (issueId === null) ? 'block' : 'none';
+
+
+            if (issueId !== null && issueId !== undefined) {
+                // --- Editing existing issue ---
+                const issue = issues.find(i => i.id === issueId);
+                if (!issue) {
+                     displayError(`Cannot edit issue: Issue with ID ${issueId} not found.`);
+                     hideIssueForm();
+                     return;
+                 }
+
+                formTitle.textContent = `Edit Issue #${issue.id}`; // Show ID in title
+                formIssueId.value = issue.id; // Set the hidden ID field
+                formBuildingSelect.value = issue.buildingid || ''; // Use backend key
+                formTitleInput.value = issue.title || '';
+                formLocationInput.value = issue.location || '';
+                formDescriptionInput.value = issue.description || ''; // Core description is editable
+                formInitialNoteInput.value = ''; // Clear initial note field when editing
+                formStatusSelect.value = issue.status || 'New';
+                formPrioritySelect.value = issue.priority || 'Medium';
+                formAssignedInput.value = issue.assignedto || ''; // Use backend key
+
+                 // Make sure a valid building is selected, otherwise default
+                 if (!formBuildingSelect.value && buildings.length > 0) {
+                     formBuildingSelect.value = buildings[0].id; // Default to first if current is invalid/missing
+                 }
+
+
+            } else {
+                // --- Adding new issue ---
+                formTitle.textContent = "Add New Issue";
+                formIssueId.value = ''; // Clear ID field
+                // Reset form fields to default
+                formBuildingSelect.value = ''; // Reset to prompt
+                formTitleInput.value = '';
+                formLocationInput.value = '';
+                formDescriptionInput.value = '';
+                formInitialNoteInput.value = ''; // Clear initial note field
+                formStatusSelect.value = 'New';
+                formPrioritySelect.value = 'Medium';
+                formAssignedInput.value = '';
+            }
+        }
+
+        function hideIssueForm() {
+            issueFormDiv.style.display = 'none';
+            addNewIssueBtn.disabled = false; // Re-enable Add button
+             formIssueId.value = ''; // Clear hidden ID when closing form
+        }
+
+        // --- Fetch Data Function ---
+        async function fetchDataFromSheet() {
+             showLoading(true, 'Fetching data from Google Sheet...'); // Show specific message
+             console.log("Fetching data from Sheet...");
+             try {
+                 // Append timestamp to prevent potential caching issues with GET requests
+                 const noCacheUrl = SCRIPT_URL + "?action=getData&t=" + new Date().getTime();
+                 const response = await fetch(noCacheUrl); // Add action parameter
+
+                 if (!response.ok) {
+                     // Try to get error details from response body
+                     let errorText = `HTTP error ${response.status}: ${response.statusText}`;
+                     try {
+                         const body = await response.text();
+                         errorText += ` - ${body}`;
+                     } catch (e) { /* Ignore if body cannot be read */ }
+                     throw new Error(errorText);
+                 }
+
+                 const data = await response.json();
+                 console.log("Data received:", data);
+
+                 // Check for success flag from backend
+                  if (!data || data.success === false) {
+                     throw new Error("Error reported from Apps Script: " + (data.error || data.message || 'Unknown error'));
+                  }
+
+                 // Basic validation of received data structure
+                  if (!Array.isArray(data.buildings)) {
+                     console.warn("Received data missing or invalid 'buildings' array.");
+                     data.buildings = []; // Default to empty array to prevent errors
+                  }
+                   if (!Array.isArray(data.issues)) {
+                     console.warn("Received data missing or invalid 'issues' array.");
+                     data.issues = []; // Default to empty array
+                   }
+
+
+                 // Store fetched data globally
+                 buildings = data.buildings;
+                 issues = data.issues;
+
+                 populateBuildingDropdown(); // Populate dropdown FIRST
+                 renderWhiteboardsAndIssues(); // THEN Render boards and issues
+                 clearIssueDetails(); // Ensure details panel is initially clear
+
+             } catch (error) {
+                 console.error("Error fetching data:", error);
+                 // Display user-friendly error
+                 displayError(`Failed to load data: ${error.message}. Please check connection, Google Sheet setup, and script deployment.`);
+                 // Optionally clear boards or show specific error state
+                 whiteboardArea.innerHTML = ''; // Clear whiteboard area on error
+             } finally {
+                showLoading(false);
+             }
+         }
+
+
+        // --- Save Issue (Add/Update) Function ---
+        async function saveIssue() { // Make function async
+            clearError(); // Clear previous errors
+            const id = formIssueId.value ? parseInt(formIssueId.value) : null;
+
+            // --- Prepare Payload ---
+             // Use keys expected by the backend GAS script
+             // Match the keys used in addIssueToSheet and updateIssueInSheet functions
+            const issuePayload = {
+                id: id, // Send ID only if updating (null or 0 otherwise)
+                buildingId: formBuildingSelect.value, // Matches 'buildingId' in GAS
+                title: formTitleInput.value.trim(),
+                location: formLocationInput.value.trim(),
+                description: formDescriptionInput.value.trim(), // Core description
+                status: formStatusSelect.value,
+                priority: formPrioritySelect.value,
+                assignedTo: formAssignedInput.value.trim(), // Matches 'assignedTo' in GAS
+                 // Send initialNote only when CREATING a new issue (id is null)
+                 initialNote: (id === null) ? formInitialNoteInput.value.trim() : undefined
+            };
+
+             // --- Basic Frontend Validation ---
+              if (!issuePayload.buildingId) {
+                   alert('Please select a Building.');
+                   formBuildingSelect.focus();
+                   return;
+               }
+              if (!issuePayload.title) {
+                   alert('Please enter a Title.');
+                   formTitleInput.focus();
+                   return;
+               }
+             // Require core description? Maybe not strictly required.
+             // if (!issuePayload.description) {
+             //      alert('Please enter a Core Description.');
+             //      formDescriptionInput.focus();
+             //      return;
+             //  }
+
+
+            console.log("Sending saveIssue payload:", JSON.stringify(issuePayload)); // Stringify for clear log view
+            showLoading(true, 'Saving issue...'); // Show loading indicator
+            hideIssueForm(); // Hide form immediately
+
+            try {
+                 const response = await fetch(SCRIPT_URL, {
+                     method: 'POST',
+                     headers: {
+                         // Apps Script doPost needs this header, even if body is plain text
+                          'Content-Type': 'text/plain;charset=utf-8',
+                     },
+                     // Wrap the actual JSON payload inside another JSON structure for GAS doPost parsing
+                     body: JSON.stringify({ action: 'saveIssue', payload: issuePayload })
+                 });
+
+                 let resultText = await response.text(); // Get text first for debugging
+                 console.log("Raw save response text:", resultText);
+
+                 if (!response.ok) {
+                     // Attempt to parse error from text if possible, otherwise use HTTP status
+                     let errorMsg = `HTTP error ${response.status}`;
+                      try {
+                         const errorJson = JSON.parse(resultText);
+                         errorMsg = errorJson.message || errorJson.error || resultText;
+                      } catch (e) {
+                         errorMsg += `: ${resultText}`; // Append raw text if not JSON
+                      }
+                     throw new Error(errorMsg);
+                 }
+
+                 const result = JSON.parse(resultText); // Now parse JSON
+                 console.log("Save issue result:", result);
+
+                 if (result.success) {
+                    // --- Refresh data from Sheet after successful save ---
+                    await fetchDataFromSheet(); // Fetch all data again
+
+                    // Try to display the newly created/updated issue
+                    const displayId = id || result.newIssueId; // Use existing ID or the one returned by backend
+                    if (displayId) {
+                         // Give DOM a moment to update after fetch? Maybe not needed.
+                         // setTimeout(() => {
+                            const finalIssue = issues.find(i => i.id === displayId);
+                            if (finalIssue) {
+                                displayIssueDetails(finalIssue.id);
+                            } else {
+                                console.warn("Couldn't find the saved issue ID " + displayId + " in the refreshed data immediately.");
+                                clearIssueDetails(); // Fallback to clear view
+                            }
+                        // }, 100); // Small delay
+                    } else {
+                        console.warn("Save successful, but no ID returned or found for display.");
+                         clearIssueDetails();
+                    }
+                    // Success message? Optional. Toast notification would be better.
+                    // displayError("Issue saved successfully!"); // Using error display for success temporarily? Not ideal.
+
+                 } else {
+                     throw new Error(result.message || 'Failed to save issue in Google Sheet (backend reported failure).');
+                 }
+
+             } catch (error) {
+                 console.error("Error saving issue:", error);
+                 displayError("Error saving issue: " + error.message);
+                 showLoading(false); // Hide loading indicator on error
+                 // Optionally, reshow the form with the entered data?
+                 // showIssueForm(id); // Re-shows form potentially
+             }
+             // finally is not strictly needed as loading(false) is handled in success/error paths or by fetchData
+         }
+
+         // --- Add Development Note Function ---
+         async function addDevelopment() { // Make function async
+             clearError(); // Clear previous errors
+             const issueId = parseInt(developmentIssueIdInput.value);
+             const note = developmentNoteInput.value.trim();
+             const responsible = developmentResponsibleInput.value.trim();
+
+             if (!issueId) {
+                  displayError("Cannot add update: No Issue ID selected.");
+                  return;
+              }
+             if (!note) {
+                 alert("Please enter an update note.");
+                 developmentNoteInput.focus();
+                 return;
+             }
+
+             // Prepare payload matching backend keys ('responsible')
+             const payload = {
+                 issueId: issueId,
+                 note: note,
+                 responsible: responsible // Backend expects 'responsible'
+             };
+
+             console.log("Sending addDevelopment payload:", JSON.stringify(payload));
+             showLoading(true, 'Adding update...'); // Show loading
+              // Disable just the add development button during processing?
+              saveDevelopmentBtn.disabled = true;
+              // saveDevelopmentBtn.textContent = 'Saving...'; // Handled by showLoading
+
+
+             try {
+                 const response = await fetch(SCRIPT_URL, {
+                     method: 'POST',
+                      headers: {
+                          'Content-Type': 'text/plain;charset=utf-8',
+                      },
+                     body: JSON.stringify({ action: 'addDevelopment', payload: payload })
+                 });
+
+                 let resultText = await response.text(); // Get text first
+                 console.log("Raw development response text:", resultText);
+
+                 if (!response.ok) {
+                       let errorMsg = `HTTP error ${response.status}`;
+                       try {
+                          const errorJson = JSON.parse(resultText);
+                          errorMsg = errorJson.message || errorJson.error || resultText;
+                       } catch (e) {
+                          errorMsg += `: ${resultText}`;
+                       }
+                       throw new Error(errorMsg);
+                 }
+
+                 const result = JSON.parse(resultText); // Parse JSON
+                 console.log("Add development result:", result);
+
+                 if (result.success) {
+                    // --- Refresh data ---
+                     await fetchDataFromSheet(); // Refreshes everything
+
+                     // Re-display the details for the *same issue*
+                      // Give DOM a moment?
+                      // setTimeout(() => {
+                         const currentIssue = issues.find(i => i.id === issueId);
+                         if (currentIssue) {
+                             displayIssueDetails(issueId); // This will now show the updated log
+                             // Clear the input fields AFTER details are redisplayed if needed
+                             // developmentNoteInput.value = ''; // Cleared in displayIssueDetails now
+                             // developmentResponsibleInput.value = currentIssue.assignedto || ''; // Reset in displayIssueDetails
+                         } else {
+                             console.warn("Couldn't find the issue ID " + issueId + " after adding development and refreshing.");
+                             clearIssueDetails();
+                         }
+                     // }, 100);
+
+                 } else {
+                     throw new Error(result.message || 'Failed to add development note (backend reported failure).');
+                 }
+
+             } catch (error) {
+                 console.error("Error adding development:", error);
+                 displayError("Error adding update: " + error.message);
+                 showLoading(false); // Hide loading on error
+             } finally {
+                 // Re-enable button (showLoading(false) should handle this now)
+                 // saveDevelopmentBtn.disabled = false;
+                 // saveDevelopmentBtn.textContent = 'Add Update';
+             }
+         }
+
+
+        // --- Initialisation ---
+        document.addEventListener('DOMContentLoaded', () => {
+             console.log("DOM fully loaded and parsed");
+            // Setup event listeners
+            addNewIssueBtn.addEventListener('click', () => showIssueForm()); // Pass null explicitly
+            editIssueBtn.addEventListener('click', () => {
+                // Get ID from the hidden field in the details/development view
+                 const currentIssueIdString = developmentIssueIdInput.value;
+                if(currentIssueIdString) {
+                    const currentIssueId = parseInt(currentIssueIdString);
+                     if(!isNaN(currentIssueId)) { // Check it's a valid number
+                         showIssueForm(currentIssueId);
+                     } else {
+                          console.warn("Edit button clicked, but issue ID found is not a number:", currentIssueIdString);
+                          displayError("Cannot edit: Invalid Issue ID selected.");
+                     }
+                } else {
+                    console.warn("Edit button clicked, but no issue ID found in details panel.");
+                    displayError("Cannot edit: No Issue ID selected.");
+                }
+            });
+            cancelFormBtn.addEventListener('click', hideIssueForm);
+            saveIssueBtn.addEventListener('click', saveIssue); // Calls async saveIssue
+            saveDevelopmentBtn.addEventListener('click', addDevelopment); // Calls async addDevelopment
+
+            // Initial data fetch
+            fetchDataFromSheet();
+        });
+
+    </script>
+</body>
+</html>
